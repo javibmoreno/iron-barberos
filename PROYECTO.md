@@ -15,8 +15,8 @@ Sistema de agendamiento self-service para barberías. El cliente reserva su turn
 | Framework | React 18 + Vite 6 |
 | Routing | React Router v6 |
 | Estilos | CSS en línea (sin librerías UI) |
-| Storage actual | localStorage (abstraído para reemplazar fácilmente) |
-| Deploy futuro | Vercel (frontend) + Supabase (base de datos) |
+| Storage | Supabase (PostgreSQL) |
+| Deploy | Vercel (frontend) + Supabase (base de datos) |
 
 ---
 
@@ -27,9 +27,10 @@ tajos/
 ├── public/
 ├── src/
 │   ├── config/
-│   │   └── negocio.js        ← datos por defecto del negocio
+│   │   ├── negocio.js        ← datos por defecto del negocio
+│   │   └── supabase.js       ← cliente de Supabase (createClient)
 │   ├── storage/
-│   │   └── index.js          ← capa de abstracción de datos (localStorage → Supabase)
+│   │   └── index.js          ← capa de abstracción de datos (Supabase)
 │   ├── pages/
 │   │   ├── Cliente.jsx       ← /  (vista pública de reservas)
 │   │   ├── Admin.jsx         ← /admin (panel de gestión)
@@ -40,6 +41,7 @@ tajos/
 │   │   └── tokens.js         ← colores, tipografía, constantes visuales
 │   ├── App.jsx               ← rutas principales
 │   └── main.jsx              ← entry point
+├── .env.local                ← variables de entorno (no subir a git)
 ├── index.html
 ├── package.json
 └── vite.config.js
@@ -110,24 +112,48 @@ C.amber     = "#7C6A3A"   // estado pendiente
 
 ## Capa de Storage (`src/storage/index.js`)
 
-Todas las funciones son `async` para que el reemplazo por Supabase sea transparente sin modificar las páginas.
-
-### Keys de localStorage
-| Key | Contenido |
-|-----|-----------|
-| `tajos_bookings` | Array de turnos |
-| `tajos_blocked` | Array de strings `"fecha__slot__barbero"` |
-| `tajos_config` | Objeto de configuración del negocio |
+Todas las funciones son `async`. La implementación usa Supabase; los componentes no saben nada de la base de datos.
 
 ### API
 ```js
 getBookings()         // → Booking[]
-saveBookings(data)    // guarda array de turnos
+saveBookings(data)    // upsert del array de turnos
 getBlocked()          // → string[]
-saveBlocked(data)     // guarda array de slots bloqueados
+saveBlocked(data)     // reemplaza todos los slots bloqueados
 getNegocio()          // → config actual o NEGOCIO_DEFAULT
-saveNegocio(data)     // persiste la configuración
+saveNegocio(data)     // upsert de la fila única de configuración
 ```
+
+### Tablas en Supabase
+
+#### `bookings`
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| `id` | text (PK) | `Date.now().toString()` |
+| `nombre` | text | |
+| `telefono` | text | |
+| `barbero` | text | |
+| `servicio` | text | |
+| `precio` | integer | En guaraníes |
+| `fecha` | text | `YYYY-MM-DD` |
+| `hora` | text | `HH:MM` (primer slot) |
+| `status` | text | `pending` \| `completed` \| `cancelled` |
+| `source` | text | `client` \| `admin` |
+| `creado_en` | timestamptz | default `now()` |
+
+#### `blocked_slots`
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| `id` | serial (PK) | |
+| `slot_key` | text (unique) | Formato: `YYYY-MM-DD__HH:MM__Barbero` |
+
+#### `negocio_config`
+| Columna | Tipo | Notas |
+|---------|------|-------|
+| `id` | integer (PK) | Siempre `1` (fila única) |
+| `data` | jsonb | Objeto completo de configuración |
+
+Todas las tablas tienen **Row Level Security** habilitado con política pública (lectura y escritura con la anon key).
 
 ---
 
@@ -261,6 +287,19 @@ function formatPrice(p) {
 
 ---
 
+## Variables de entorno
+
+El archivo `.env.local` (no subir a git) debe contener:
+
+```
+VITE_SUPABASE_URL=https://<tu-proyecto>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon-key>
+```
+
+Para deploy en Vercel, configurar las mismas variables en el panel de Environment Variables del proyecto.
+
+---
+
 ## Comandos
 
 ```bash
@@ -281,9 +320,8 @@ npm run preview
 
 ## Próximos pasos (no implementados aún)
 
-- **Supabase:** reemplazar localStorage por llamadas a la API. La capa `src/storage/index.js` está preparada para este cambio sin tocar las páginas.
-- **Deploy:** Vercel para el frontend, conectado al repo de GitHub.
-- **Multi-tenant:** cada barbería tendrá su propio `PREFIX` en storage y su propia configuración.
+- **Deploy:** Vercel para el frontend, conectado al repo de GitHub. Configurar `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en variables de entorno de Vercel.
+- **Multi-tenant:** cada barbería tendrá su propia fila en `negocio_config` y sus propios registros en `bookings` / `blocked_slots` identificados por un `negocio_id`.
 - **Notificaciones:** WhatsApp al confirmar turno (Twilio o Meta API).
 - **Facturación:** SIFEN Paraguay.
 
@@ -307,3 +345,13 @@ npm run preview
 - **Cliente:** agregado encabezado de bienvenida "Bienvenido a [negocio]" y "¿Qué desea realizarse?" en el paso de selección de servicio
 - **Admin:** implementada sesión persistente con timeout de 10 minutos de inactividad usando `sessionStorage`; al refrescar la página dentro del período activo no se solicita el PIN nuevamente
 - **Cliente:** eliminado el badge "HOY" en la lista de días para evitar confusión con la fecha real
+
+### v0.2.0 — Migración a Supabase
+- **Storage:** reemplazado localStorage por Supabase (PostgreSQL) sin modificar ningún componente
+- **`src/config/supabase.js`:** cliente Supabase inicializado con variables de entorno Vite
+- **`src/storage/index.js`:** reescrito para usar `@supabase/supabase-js`; misma API pública (`getBookings`, `saveBookings`, `getBlocked`, `saveBlocked`, `getNegocio`, `saveNegocio`)
+- **`.env.local`:** variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`
+- **Tablas creadas en Supabase:** `bookings`, `blocked_slots`, `negocio_config`
+- **RLS habilitado** en las tres tablas con política pública para la anon key
+- **Datos iniciales:** `negocio_config` precargada con la configuración de Tajos Barbería
+- Los turnos reservados por el cliente son visibles en tiempo real desde cualquier dispositivo en el panel admin
