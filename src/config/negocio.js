@@ -15,7 +15,7 @@ export const NEGOCIO_DEFAULT = {
   diasSemana: [1, 2, 3, 4, 5, 6], // 0=Dom, 1=Lun, ..., 6=Sáb
   moneda: "Gs.",
   pins: {
-    admin: "Tajosbarber26",
+    admin: "Admin2608",
     config: "Config2402",
   },
 };
