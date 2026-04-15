@@ -1,18 +1,18 @@
 export const C = {
-  bg:        "#0A0806",
-  surface:   "#111009",
-  surface2:  "#181410",
-  border:    "#2A2218",
-  border2:   "#1A150E",
-  gold:      "#C8A96E",
-  goldDim:   "#8A7050",
-  goldFaint: "#3A2F1E",
-  text:      "#E8DCC8",
-  textDim:   "#6B5B45",
-  textMid:   "#A89070",
-  green:     "#4A7C59",  greenBg:  "#0D1F12", greenText:  "#7EC89A",
-  red:       "#7C3A3A",  redBg:    "#1F0D0D", redText:    "#C87E7E",
-  amber:     "#7C6A3A",  amberBg:  "#1F1A0D", amberText:  "#C8B47E",
+  bg:        "#FFFFFF",
+  surface:   "#F5F5F5",
+  surface2:  "#EBEBEB",
+  border:    "#E0E0E0",
+  border2:   "#EEEEEE",
+  gold:      "#111111",   // acento principal
+  goldDim:   "#333333",   // acento hover
+  goldFaint: "#F0F0F0",   // fondo activo
+  text:      "#111111",
+  textDim:   "#666666",
+  textMid:   "#999999",
+  green:     "#2D6A4F",  greenBg:  "#E8F5EE", greenText:  "#1A5C3A",
+  red:       "#C0392B",  redBg:    "#FDECEA", redText:    "#A93226",
+  amber:     "#B7860B",  amberBg:  "#FEF9E7", amberText:  "#9A7209",
 };
 
 export const font = "'Georgia', 'Times New Roman', serif";

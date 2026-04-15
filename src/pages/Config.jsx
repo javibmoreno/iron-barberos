@@ -129,8 +129,8 @@ function ConfigPanel({ negocio: initialNegocio }) {
         padding: "0 24px", background: C.surface, position: "sticky", top: 0, zIndex: 100,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: "1.1rem", letterSpacing: "0.25em", color: C.gold }}>TAJOS</span>
-          <span style={{ fontSize: "0.6rem", letterSpacing: "0.2em", color: C.textDim, textTransform: "uppercase" }}>Configuración</span>
+          <img src="/logo.png" alt="Iron Barberos" style={{ height: 28, objectFit: "contain" }} />
+          <span style={{ fontSize: "0.6rem", letterSpacing: "0.2em", color: C.textDim, textTransform: "uppercase" }}>Iron Barberos — Configuración</span>
         </div>
       </div>
 

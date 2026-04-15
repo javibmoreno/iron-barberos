@@ -152,7 +152,7 @@ export default function Admin() {
           background: C.surface, transition: "border-color 0.2s",
         }}>
           <div style={{ textAlign: "center", marginBottom: 36 }}>
-            <div style={{ fontSize: "1.4rem", letterSpacing: "0.25em", color: C.gold, marginBottom: 6 }}>TAJOS</div>
+            <img src="/logo.png" alt="Iron Barberos" style={{ height: 40, objectFit: "contain", marginBottom: 10 }} />
             <div style={{ fontSize: "0.65rem", letterSpacing: "0.2em", color: C.textDim, textTransform: "uppercase" }}>
               Panel de Administración
             </div>
@@ -281,8 +281,8 @@ function AdminPanel({ negocio }) {
         padding: "0 24px", background: C.surface, position: "sticky", top: 0, zIndex: 100,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <span style={{ fontSize: "1.1rem", letterSpacing: "0.25em", color: C.gold }}>TAJOS</span>
-          <span style={{ fontSize: "0.6rem", letterSpacing: "0.2em", color: C.textDim, textTransform: "uppercase" }}>Admin</span>
+          <img src="/logo.png" alt="Iron Barberos" style={{ height: 28, objectFit: "contain" }} />
+          <span style={{ fontSize: "0.6rem", letterSpacing: "0.2em", color: C.textDim, textTransform: "uppercase" }}>Iron Barberos — Admin</span>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
           {["grid", "summary"].map(t => (

@@ -1,5 +1,5 @@
 export const NEGOCIO_DEFAULT = {
-  nombre: "Tajos Barbería",
+  nombre: "Iron Barberos",
   barberos: ["Carlos", "Matías", "Diego", "Rodrigo", "Nicolás"],
   servicios: [
     { id: "1", nombre: "Corte de cabello",            precio: 50000,  slots: 2 },

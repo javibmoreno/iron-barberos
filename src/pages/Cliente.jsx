@@ -248,7 +248,7 @@ export default function Cliente() {
         display: "flex", alignItems: "center", justifyContent: "center",
         background: C.surface,
       }}>
-        <span style={{ fontSize: "1.2rem", letterSpacing: "0.3em", color: C.gold }}>TAJOS</span>
+        <img src="/logo.png" alt="Iron Barberos" style={{ height: 36, objectFit: "contain" }} />
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "32px 20px" }}>
@@ -257,8 +257,11 @@ export default function Cliente() {
         {step === "service" && (
           <div className="fade">
             <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: "1.3rem", color: C.text, marginBottom: 6 }}>
+              <div style={{ fontSize: "1.3rem", color: C.text, marginBottom: 4 }}>
                 Bienvenido a {negocio.nombre}
+              </div>
+              <div style={{ fontSize: "0.8rem", color: C.textDim, marginBottom: 6, fontStyle: "italic" }}>
+                Tu estilo empieza en la barbería
               </div>
               <div style={{ fontSize: "0.8rem", color: C.textMid }}>
                 ¿Qué desea realizarse?

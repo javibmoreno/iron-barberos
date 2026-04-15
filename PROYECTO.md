@@ -1,4 +1,4 @@
-# Tajos Barbería — Documentación del Proyecto
+# Iron Barberos — Documentación del Proyecto
 
 ## Descripción
 
@@ -332,7 +332,7 @@ npm run preview
 ### v0.1.0 — Implementación inicial
 - Creación del proyecto React + Vite desde cero
 - Estructura de carpetas según especificación
-- `src/config/negocio.js` con datos por defecto de Tajos Barbería
+- `src/config/negocio.js` con datos por defecto de Iron Barberos
 - `src/storage/index.js` con capa de abstracción sobre localStorage
 - `src/design/tokens.js` con paleta de colores y tipografía
 - `src/components/PinGate.jsx` — componente reutilizable de autenticación por PIN
@@ -353,5 +353,5 @@ npm run preview
 - **`.env.local`:** variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`
 - **Tablas creadas en Supabase:** `bookings`, `blocked_slots`, `negocio_config`
 - **RLS habilitado** en las tres tablas con política pública para la anon key
-- **Datos iniciales:** `negocio_config` precargada con la configuración de Tajos Barbería
+- **Datos iniciales:** `negocio_config` precargada con la configuración de Iron Barberos
 - Los turnos reservados por el cliente son visibles en tiempo real desde cualquier dispositivo en el panel admin
