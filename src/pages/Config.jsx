@@ -66,6 +66,7 @@ function ConfigPanel({ negocio: initialNegocio }) {
       nombre: "Nuevo servicio",
       precio: 0,
       slots: 2,
+      descripcion: "",
     };
     setConfig(c => ({ ...c, servicios: [...c.servicios, nuevo] }));
   }
@@ -196,6 +197,12 @@ function ConfigPanel({ negocio: initialNegocio }) {
                         value={svc.nombre}
                         onChange={e => updateServicio(idx, "nombre", e.target.value)}
                         style={{ ...inputStyle, width: "100%", minWidth: 200 }}
+                      />
+                      <input
+                        value={svc.descripcion || ""}
+                        onChange={e => updateServicio(idx, "descripcion", e.target.value)}
+                        placeholder="Descripción del servicio"
+                        style={{ ...inputStyle, width: "100%", minWidth: 200, marginTop: 6, fontSize: "0.75rem" }}
                       />
                     </td>
                     <td style={{ padding: "8px 4px" }}>

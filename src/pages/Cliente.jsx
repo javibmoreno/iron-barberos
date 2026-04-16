@@ -99,6 +99,14 @@ function getSlotsWithAnyBarber(fecha, service, bookings, blocked, barberos, allS
   );
 }
 
+// ─── SERVICE ICONS ────────────────────────────────────────────────────────────
+const SERVICE_ICONS = {
+  "Corte de cabello": "✂️",
+  "Retoque de barba": "🪒",
+  "Barba con ritual": "🪒",
+  "Cejas": "✨",
+};
+
 // ─── SUB-COMPONENTS ───────────────────────────────────────────────────────────
 function StepHeader({ title, subtitle }) {
   return (
@@ -234,7 +242,7 @@ export default function Cliente() {
         ::-webkit-scrollbar-thumb { background: ${C.border}; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
         .fade { animation: fadeUp 0.25s ease; }
-        .svc-card:hover { border-color: ${C.goldDim} !important; background: ${C.surface2} !important; }
+        .svc-card:hover { border-color: #C8A96E !important; box-shadow: 0 4px 14px rgba(200,169,110,0.18) !important; }
         .barber-card:hover { border-color: ${C.goldDim} !important; }
         .slot-btn:hover { border-color: ${C.goldDim} !important; }
         .day-btn:hover { background: ${C.surface2} !important; }
@@ -244,11 +252,19 @@ export default function Cliente() {
 
       {/* NAVBAR */}
       <div style={{
-        height: 56, borderBottom: `1px solid ${C.border2}`,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        background: C.surface,
+        padding: "16px 0 14px",
+        borderBottom: `1px solid ${C.border2}`,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        background: C.surface, gap: 6,
       }}>
-        <img src="/logo.png" alt="Iron Barberos" style={{ height: 36, objectFit: "contain" }} />
+        <img src="/logo.png" alt="Iron Barberos" style={{ height: 40, objectFit: "contain" }} />
+        <div style={{
+          fontSize: "0.65rem", letterSpacing: "0.35em", color: "#111111",
+          fontFamily: "'Georgia', 'Times New Roman', serif", fontWeight: "bold",
+          textTransform: "uppercase",
+        }}>
+          IRON BARBEROS
+        </div>
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "32px 20px" }}>
@@ -256,34 +272,52 @@ export default function Cliente() {
         {/* STEP: SERVICE */}
         {step === "service" && (
           <div className="fade">
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: "1.3rem", color: C.text, marginBottom: 4 }}>
-                Bienvenido a {negocio.nombre}
+            <div style={{ marginBottom: 32 }}>
+              <div style={{
+                fontSize: "1.7rem", color: "#111111", marginBottom: 10,
+                fontFamily: "'Georgia', 'Times New Roman', serif",
+                fontWeight: "bold", lineHeight: 1.25,
+              }}>
+                Tu estilo empieza en la barbería.
               </div>
-              <div style={{ fontSize: "0.8rem", color: C.textDim, marginBottom: 6, fontStyle: "italic" }}>
-                Tu estilo empieza en la barbería
-              </div>
-              <div style={{ fontSize: "0.8rem", color: C.textMid }}>
-                ¿Qué desea realizarse?
+              <div style={{ fontSize: "0.85rem", color: "#666666" }}>
+                ¡Te damos la bienvenida! Agenda tu cita a continuación.
               </div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {negocio.servicios.map(svc => (
                 <button key={svc.id} className="svc-card"
                   onClick={() => { setSelectedService(svc); setStep("preference"); }}
                   style={{
-                    background: C.surface, border: `1px solid ${C.border}`,
-                    padding: "20px 24px", cursor: "pointer", textAlign: "left",
-                    fontFamily: font, transition: "all 0.15s",
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    background: "#FFFFFF",
+                    border: "1px solid #E8D5A3",
+                    borderRadius: 12,
+                    padding: "18px 20px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    fontFamily: font,
+                    transition: "all 0.15s",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    display: "flex", alignItems: "center", gap: 16,
                   }}>
-                  <div>
-                    <div style={{ fontSize: "1rem", color: C.text, marginBottom: 4 }}>{svc.nombre}</div>
-                    <div style={{ fontSize: "0.7rem", color: C.textDim, letterSpacing: "0.08em" }}>
-                      {svc.slots * negocio.horario.slotMinutos} min
-                    </div>
+                  <div style={{ fontSize: "2rem", lineHeight: 1, flexShrink: 0 }}>
+                    {SERVICE_ICONS[svc.nombre] || "✂️"}
                   </div>
-                  <div style={{ fontFamily: mono, fontSize: "0.9rem", color: C.gold }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: "1rem", color: "#C8A96E",
+                      fontFamily: "'Georgia', 'Times New Roman', serif",
+                      fontWeight: "bold", marginBottom: 4,
+                    }}>
+                      {svc.nombre}
+                    </div>
+                    {svc.descripcion && (
+                      <div style={{ fontSize: "0.75rem", color: "#555555", lineHeight: 1.4 }}>
+                        {svc.descripcion}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontFamily: mono, fontSize: "0.85rem", color: "#111111", whiteSpace: "nowrap", flexShrink: 0 }}>
                     {formatPrice(svc.precio)}
                   </div>
                 </button>
