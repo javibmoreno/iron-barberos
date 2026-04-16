@@ -12,6 +12,11 @@ function parseTime(str) {
   return h * 60 + m;
 }
 
+function nowMinutes() {
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes();
+}
+
 function generateSlots(horario) {
   const slots = [];
   const startMin = parseTime(horario.inicio);
@@ -53,48 +58,56 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function getNextSlot(hora, allSlots) {
-  const idx = allSlots.indexOf(hora);
-  return idx >= 0 && idx + 1 < allSlots.length ? allSlots[idx + 1] : null;
+function calcEndTime(startSlot, totalSlots, slotMinutos) {
+  const endMin = parseTime(startSlot) + totalSlots * slotMinutos;
+  return `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 }
 
 function isSlotOccupied(slot, barbero, fecha, bookings, blocked, allSlots) {
-  const bookedHere = bookings.some(b =>
-    b.fecha === fecha && b.barbero === barbero && b.status !== "cancelled" &&
-    (b.hora === slot || getNextSlot(b.hora, allSlots) === slot)
-  );
+  const idx = allSlots.indexOf(slot);
+  const bookedHere = bookings.some(b => {
+    if (b.fecha !== fecha || b.barbero !== barbero || b.status === "cancelled") return false;
+    const bIdx = allSlots.indexOf(b.hora);
+    // A booking occupies its start slot plus the next one (legacy 2-slot assumption)
+    return bIdx === idx || bIdx === idx - 1;
+  });
   const blockedHere = blocked.includes(`${fecha}__${slot}__${barbero}`);
   return bookedHere || blockedHere;
 }
 
-function isSlotAvailableForService(slot, barbero, fecha, service, bookings, blocked, allSlots) {
-  if (isSlotOccupied(slot, barbero, fecha, bookings, blocked, allSlots)) return false;
-  if (service.slots >= 2) {
-    const next = getNextSlot(slot, allSlots);
-    if (!next) return false;
-    if (isSlotOccupied(next, barbero, fecha, bookings, blocked, allSlots)) return false;
+// services = array of service objects; checks totalSlots consecutive free slots
+function isSlotAvailableForService(slot, barbero, fecha, services, bookings, blocked, allSlots) {
+  const totalSlots = services.reduce((a, s) => a + s.slots, 0);
+  const startIdx = allSlots.indexOf(slot);
+  if (startIdx < 0 || startIdx + totalSlots > allSlots.length) return false;
+  for (let i = 0; i < totalSlots; i++) {
+    if (isSlotOccupied(allSlots[startIdx + i], barbero, fecha, bookings, blocked, allSlots)) return false;
   }
   return true;
 }
 
-function getAvailableSlotsForBarber(barbero, fecha, service, bookings, blocked, allSlots) {
+function getAvailableSlotsForBarber(barbero, fecha, services, bookings, blocked, allSlots) {
+  const cutoff = fecha === todayStr() ? nowMinutes() + 30 : -1;
   return allSlots.filter(s =>
-    isSlotAvailableForService(s, barbero, fecha, service, bookings, blocked, allSlots)
+    (cutoff < 0 || parseTime(s) > cutoff) &&
+    isSlotAvailableForService(s, barbero, fecha, services, bookings, blocked, allSlots)
   );
 }
 
-function getBestBarber(fecha, slot, service, bookings, blocked, barberos, allSlots) {
+function getBestBarber(fecha, slot, services, bookings, blocked, barberos, allSlots) {
   const available = barberos.filter(name =>
-    isSlotAvailableForService(slot, name, fecha, service, bookings, blocked, allSlots)
+    isSlotAvailableForService(slot, name, fecha, services, bookings, blocked, allSlots)
   );
   if (available.length === 0) return null;
   return available[Math.floor(Math.random() * available.length)];
 }
 
-function getSlotsWithAnyBarber(fecha, service, bookings, blocked, barberos, allSlots) {
+function getSlotsWithAnyBarber(fecha, services, bookings, blocked, barberos, allSlots) {
+  const cutoff = fecha === todayStr() ? nowMinutes() + 30 : -1;
   return allSlots.filter(slot =>
+    (cutoff < 0 || parseTime(slot) > cutoff) &&
     barberos.some(name =>
-      isSlotAvailableForService(slot, name, fecha, service, bookings, blocked, allSlots)
+      isSlotAvailableForService(slot, name, fecha, services, bookings, blocked, allSlots)
     )
   );
 }
@@ -172,7 +185,7 @@ export default function Cliente() {
 
   const [step, setStep] = useState("service");
   const [flow, setFlow] = useState(null);
-  const [selectedService, setSelectedService] = useState(null);
+  const [selectedServices, setSelectedServices] = useState([]);
   const [selectedBarber, setSelectedBarber] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -191,24 +204,32 @@ export default function Cliente() {
 
   function reset() {
     setStep("service"); setFlow(null);
-    setSelectedService(null); setSelectedBarber(null);
+    setSelectedServices([]); setSelectedBarber(null);
     setSelectedDate(null); setSelectedSlot(null);
     setNombre(""); setTelefono("");
+  }
+
+  function toggleService(svc) {
+    setSelectedServices(prev => {
+      const isSelected = prev.some(s => s.id === svc.id);
+      return isSelected ? prev.filter(s => s.id !== svc.id) : [...prev, svc];
+    });
   }
 
   async function confirm() {
     const allSlots = generateSlots(negocio.horario);
     const barbero = flow === "A"
       ? selectedBarber
-      : getBestBarber(selectedDate, selectedSlot, selectedService, bookings, blocked, negocio.barberos, allSlots);
+      : getBestBarber(selectedDate, selectedSlot, selectedServices, bookings, blocked, negocio.barberos, allSlots);
     if (!barbero) return;
+    const totalPrecio = selectedServices.reduce((a, s) => a + s.precio, 0);
     const booking = {
       id: Date.now().toString(),
       nombre: nombre.trim(),
       telefono: telefono.trim(),
       barbero,
-      servicio: selectedService.nombre,
-      precio: selectedService.precio,
+      servicio: selectedServices.map(s => s.nombre).join(", "),
+      precio: totalPrecio,
       fecha: selectedDate,
       hora: selectedSlot,
       status: "pending",
@@ -231,6 +252,9 @@ export default function Cliente() {
 
   const allSlots = generateSlots(negocio.horario);
   const weekDates = getWeekDates(negocio.diasSemana);
+  const servicesSubtitle = selectedServices.map(s => s.nombre).join(" + ");
+  const totalSlots = selectedServices.reduce((a, s) => a + s.slots, 0);
+  const totalPrecio = selectedServices.reduce((a, s) => a + s.precio, 0);
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: font, color: C.text }}>
@@ -285,44 +309,97 @@ export default function Cliente() {
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {negocio.servicios.map(svc => (
-                <button key={svc.id} className="svc-card"
-                  onClick={() => { setSelectedService(svc); setStep("preference"); }}
-                  style={{
-                    background: "#FFFFFF",
-                    border: "1px solid #E8D5A3",
-                    borderRadius: 12,
-                    padding: "18px 20px",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    fontFamily: font,
-                    transition: "all 0.15s",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-                    display: "flex", alignItems: "center", gap: 16,
-                  }}>
-                  <div style={{ fontSize: "2rem", lineHeight: 1, flexShrink: 0 }}>
-                    {SERVICE_ICONS[svc.nombre] || "✂️"}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: "1rem", color: "#C8A96E",
-                      fontFamily: "'Georgia', 'Times New Roman', serif",
-                      fontWeight: "bold", marginBottom: 4,
-                    }}>
-                      {svc.nombre}
-                    </div>
-                    {svc.descripcion && (
-                      <div style={{ fontSize: "0.75rem", color: "#555555", lineHeight: 1.4 }}>
-                        {svc.descripcion}
+              {negocio.servicios.map(svc => {
+                const isSelected = selectedServices.some(s => s.id === svc.id);
+                return (
+                  <button
+                    key={svc.id}
+                    className={isSelected ? "" : "svc-card"}
+                    onClick={() => toggleService(svc)}
+                    style={{
+                      position: "relative",
+                      background: isSelected ? "#FFFBF4" : "#FFFFFF",
+                      border: isSelected ? "2px solid #C8A96E" : "1px solid #E8D5A3",
+                      borderRadius: 12,
+                      padding: "18px 20px",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      fontFamily: font,
+                      transition: "all 0.15s",
+                      boxShadow: isSelected
+                        ? "0 4px 14px rgba(200,169,110,0.22)"
+                        : "0 2px 8px rgba(0,0,0,0.06)",
+                      display: "flex", alignItems: "center", gap: 16,
+                    }}
+                  >
+                    {/* Checkmark */}
+                    {isSelected && (
+                      <div style={{
+                        position: "absolute", top: 10, right: 10,
+                        width: 22, height: 22, borderRadius: "50%",
+                        background: "#C8A96E",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "0.7rem", color: "#FFFFFF", fontWeight: "bold",
+                        lineHeight: 1,
+                      }}>
+                        ✓
                       </div>
                     )}
-                  </div>
-                  <div style={{ fontFamily: mono, fontSize: "0.85rem", color: "#111111", whiteSpace: "nowrap", flexShrink: 0 }}>
-                    {formatPrice(svc.precio)}
-                  </div>
-                </button>
-              ))}
+                    <div style={{ fontSize: "2rem", lineHeight: 1, flexShrink: 0 }}>
+                      {SERVICE_ICONS[svc.nombre] || "✂️"}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: "1rem", color: "#C8A96E",
+                        fontFamily: "'Georgia', 'Times New Roman', serif",
+                        fontWeight: "bold", marginBottom: 4,
+                      }}>
+                        {svc.nombre}
+                      </div>
+                      {svc.descripcion && (
+                        <div style={{ fontSize: "0.75rem", color: "#555555", lineHeight: 1.4 }}>
+                          {svc.descripcion}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontFamily: mono, fontSize: "0.85rem", color: "#111111", whiteSpace: "nowrap", flexShrink: 0 }}>
+                      {formatPrice(svc.precio)}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Barra de resumen + botón Continuar */}
+            {selectedServices.length > 0 && (
+              <div className="fade" style={{ marginTop: 20 }}>
+                <div style={{
+                  background: "#FFFBF4", border: "1px solid #E8D5A3",
+                  borderRadius: 10, padding: "12px 18px",
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  marginBottom: 12,
+                }}>
+                  <span style={{ fontSize: "0.8rem", color: "#555555" }}>
+                    {selectedServices.length} servicio{selectedServices.length > 1 ? "s" : ""} seleccionado{selectedServices.length > 1 ? "s" : ""}
+                  </span>
+                  <span style={{ fontFamily: mono, fontSize: "0.9rem", color: "#111111", fontWeight: "bold" }}>
+                    {formatPrice(totalPrecio)}
+                  </span>
+                </div>
+                <button
+                  className="primary-btn"
+                  onClick={() => setStep("preference")}
+                  style={{
+                    width: "100%", padding: "14px", background: "transparent",
+                    border: "1px solid #C8A96E", color: "#C8A96E", fontFamily: font,
+                    fontSize: "0.8rem", letterSpacing: "0.15em", textTransform: "uppercase",
+                    cursor: "pointer", transition: "all 0.2s", borderRadius: 8,
+                  }}
+                >
+                  Continuar
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -330,7 +407,7 @@ export default function Cliente() {
         {step === "preference" && (
           <div className="fade">
             <BackBtn onClick={() => setStep("service")} />
-            <StepHeader title="¿Tenés preferencia de barbero?" subtitle={selectedService?.nombre} />
+            <StepHeader title="¿Tenés preferencia de barbero?" subtitle={servicesSubtitle} />
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <ChoiceCard
                 title="Sí, quiero elegir mi barbero"
@@ -350,7 +427,7 @@ export default function Cliente() {
         {step === "barber" && (
           <div className="fade">
             <BackBtn onClick={() => setStep("preference")} />
-            <StepHeader title="Elegí tu barbero" subtitle={selectedService?.nombre} />
+            <StepHeader title="Elegí tu barbero" subtitle={servicesSubtitle} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {negocio.barberos.map(name => (
                 <button key={name} className="barber-card"
@@ -374,17 +451,26 @@ export default function Cliente() {
             <BackBtn onClick={() => setStep(flow === "A" ? "barber" : "preference")} />
             <StepHeader
               title="Elegí el día"
-              subtitle={flow === "A" ? `${selectedService?.nombre} · ${selectedBarber}` : selectedService?.nombre}
+              subtitle={flow === "A" ? `${servicesSubtitle} · ${selectedBarber}` : servicesSubtitle}
             />
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {weekDates.map(d => {
-                const slots = flow === "A"
-                  ? getAvailableSlotsForBarber(selectedBarber, d, selectedService, bookings, blocked, allSlots)
-                  : getSlotsWithAnyBarber(d, selectedService, bookings, blocked, negocio.barberos, allSlots);
                 const isPast = d < todayStr();
                 if (isPast) return null;
+
+                // Deshabilitar hoy si ya no quedan slots útiles
+                const isTodayExhausted =
+                  d === todayStr() &&
+                  nowMinutes() >= parseTime(negocio.horario.fin) - 30;
+
+                const slots = isTodayExhausted ? [] : (
+                  flow === "A"
+                    ? getAvailableSlotsForBarber(selectedBarber, d, selectedServices, bookings, blocked, allSlots)
+                    : getSlotsWithAnyBarber(d, selectedServices, bookings, blocked, negocio.barberos, allSlots)
+                );
+
                 return (
-                  <button key={d} className="day-btn"
+                  <button key={d} className={slots.length > 0 ? "day-btn" : ""}
                     disabled={slots.length === 0}
                     onClick={() => { setSelectedDate(d); setStep("slot"); }}
                     style={{
@@ -395,11 +481,7 @@ export default function Cliente() {
                       opacity: slots.length === 0 ? 0.35 : 1,
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                     }}>
-                    <div style={{ textAlign: "left" }}>
-                      <div style={{ fontSize: "0.9rem", color: C.text }}>
-                        {fmtDate(d)}
-                      </div>
-                    </div>
+                    <div style={{ fontSize: "0.9rem", color: C.text }}>{fmtDate(d)}</div>
                     <div style={{ fontSize: "0.7rem", color: slots.length > 0 ? C.goldDim : C.textDim, fontFamily: mono }}>
                       {slots.length > 0 ? `${slots.length} horarios` : "Sin disponibilidad"}
                     </div>
@@ -416,13 +498,16 @@ export default function Cliente() {
             <BackBtn onClick={() => setStep("day")} />
             <StepHeader title="Elegí el horario" subtitle={fmtDate(selectedDate)} />
             {(() => {
-              const slots = flow === "A"
-                ? getAvailableSlotsForBarber(selectedBarber, selectedDate, selectedService, bookings, blocked, allSlots)
-                : getSlotsWithAnyBarber(selectedDate, selectedService, bookings, blocked, negocio.barberos, allSlots);
+              const availableSlots = flow === "A"
+                ? getAvailableSlotsForBarber(selectedBarber, selectedDate, selectedServices, bookings, blocked, allSlots)
+                : getSlotsWithAnyBarber(selectedDate, selectedServices, bookings, blocked, negocio.barberos, allSlots);
+              const cutoff = selectedDate === todayStr() ? nowMinutes() + 30 : -1;
               return (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                   {allSlots.map(s => {
-                    const free = slots.includes(s);
+                    const free = availableSlots.includes(s);
+                    const isPast = cutoff >= 0 && parseTime(s) <= cutoff;
+                    const opacity = free ? 1 : (isPast ? 0.15 : 0.3);
                     return (
                       <button key={s} className={free ? "slot-btn" : ""}
                         disabled={!free}
@@ -433,7 +518,7 @@ export default function Cliente() {
                           border: `1px solid ${free ? C.border : C.border2}`,
                           color: free ? C.gold : C.textDim,
                           cursor: free ? "pointer" : "not-allowed",
-                          opacity: free ? 1 : 0.3, transition: "all 0.15s",
+                          opacity, transition: "all 0.15s",
                         }}>
                         {s}
                       </button>
@@ -476,11 +561,11 @@ export default function Cliente() {
             </div>
             <div style={{ background: C.surface, border: `1px solid ${C.border2}`, padding: "16px 20px", marginBottom: 20 }}>
               {[
-                ["Servicio", selectedService?.nombre],
+                ["Servicio", selectedServices.map(s => s.nombre).join(", ")],
                 ["Barbero", flow === "A" ? selectedBarber : "Asignado automáticamente"],
                 ["Fecha", fmtDate(selectedDate)],
-                ["Hora", selectedSlot],
-                ["Precio", formatPrice(selectedService?.precio || 0)],
+                ["Hora", `${selectedSlot} → ${calcEndTime(selectedSlot, totalSlots, negocio.horario.slotMinutos)}`],
+                ["Precio", formatPrice(totalPrecio)],
               ].map(([k, v]) => (
                 <div key={k} style={{
                   display: "flex", justifyContent: "space-between",
@@ -491,6 +576,7 @@ export default function Cliente() {
                     fontSize: "0.85rem",
                     color: k === "Precio" ? C.gold : C.text,
                     fontFamily: (k === "Precio" || k === "Hora") ? mono : font,
+                    textAlign: "right", maxWidth: "60%",
                   }}>{v}</span>
                 </div>
               ))}
