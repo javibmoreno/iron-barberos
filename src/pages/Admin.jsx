@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { C, font, mono } from "../design/tokens.js";
 import { getBookings, saveBookings, getBlocked, saveBlocked, getNegocio } from "../storage/index.js";
+import { supabase } from "../config/supabase.js";
 
 const SESSION_KEY = "tajos_admin_auth";
 const TIMEOUT_MS = 10 * 60 * 1000; // 10 minutos
@@ -201,6 +202,22 @@ export default function Admin() {
 }
 
 // ─── ADMIN PANEL ──────────────────────────────────────────────────────────────
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
 function AdminPanel({ negocio }) {
   const [bookings, setBookings] = useState([]);
   const [blocked, setBlocked] = useState([]);
@@ -208,9 +225,12 @@ function AdminPanel({ negocio }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [tab, setTab] = useState("grid");
+  const [toast, setToast] = useState({ visible: false, mensaje: "", cliente: "" });
 
   const allSlots = generateSlots(negocio.horario);
 
+  // NOTA: Para que las notificaciones funcionen, habilitar Realtime en Supabase:
+  // Table Editor → bookings → Enable Realtime (ícono del mundo)
   useEffect(() => {
     (async () => {
       const [b, bl] = await Promise.all([getBookings(), getBlocked()]);
@@ -218,6 +238,27 @@ function AdminPanel({ negocio }) {
       setBlocked(bl);
       setLoading(false);
     })();
+
+    const channel = supabase
+      .channel('bookings-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'bookings' },
+        (payload) => {
+          const nuevo = payload.new;
+          setBookings(prev => [...prev, nuevo]);
+          setToast({
+            visible: true,
+            mensaje: `Nuevo turno — ${nuevo.barbero}, ${nuevo.hora}`,
+            cliente: nuevo.nombre,
+          });
+          setTimeout(() => setToast(t => ({ ...t, visible: false })), 6000);
+          playNotificationSound();
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   async function cancelBooking(id) {
@@ -264,6 +305,7 @@ function AdminPanel({ negocio }) {
         ::-webkit-scrollbar-track { background: ${C.bg}; }
         ::-webkit-scrollbar-thumb { background: ${C.border}; }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         .fade { animation: fadeIn 0.2s ease; }
         .cell-btn:hover { border-color: ${C.goldDim} !important; }
         .nav-date:hover { background: ${C.surface2} !important; }
@@ -276,15 +318,37 @@ function AdminPanel({ negocio }) {
 
       {/* NAVBAR */}
       <div style={{
-        height: 52, borderBottom: `1px solid ${C.border2}`,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 24px", background: C.surface, position: "sticky", top: 0, zIndex: 100,
+        padding: "14px 24px",
+        borderBottom: "1px solid #E0E0E0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#fff",
+        gap: 14,
+        position: "sticky", top: 0, zIndex: 100,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <img src="/logo.png" alt="Iron Barberos" style={{ height: 28, objectFit: "contain" }} />
-          <span style={{ fontSize: "0.6rem", letterSpacing: "0.2em", color: C.textDim, textTransform: "uppercase" }}>Iron Barberos — Admin</span>
+        <img
+          src="/logo.png"
+          alt="Iron Barberos"
+          style={{
+            width: 56, height: 56,
+            borderRadius: "50%",
+            border: "1.5px solid #E0E0E0",
+            objectFit: "contain",
+            mixBlendMode: "multiply",
+            background: "#fff",
+            flexShrink: 0,
+          }}
+        />
+        <div>
+          <div style={{ fontSize: "13px", letterSpacing: "0.35em", color: "#111", fontFamily: "'Georgia','Times New Roman',serif", fontWeight: 500, textTransform: "uppercase", marginBottom: 2 }}>
+            IRON BARBEROS
+          </div>
+          <div style={{ fontSize: "11px", color: "#999", letterSpacing: "0.05em" }}>
+            Panel de administración
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 4 }}>
+        <div style={{ position: "absolute", right: 24, display: "flex", gap: 4 }}>
           {["grid", "summary"].map(t => (
             <button key={t} className="tab-btn" onClick={() => setTab(t)} style={{
               background: "transparent", border: "none",
@@ -296,9 +360,6 @@ function AdminPanel({ negocio }) {
               {t === "grid" ? "Grilla" : "Resumen"}
             </button>
           ))}
-        </div>
-        <div style={{ fontSize: "0.65rem", color: C.textDim, letterSpacing: "0.1em" }}>
-          {new Date().toLocaleTimeString("es-PY", { hour: "2-digit", minute: "2-digit" })}
         </div>
       </div>
 
@@ -397,6 +458,29 @@ function AdminPanel({ negocio }) {
             />
           )}
         </Modal>
+      )}
+
+      {/* TOAST: notificación de nuevo turno en tiempo real */}
+      {toast.visible && (
+        <div style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          background: "#111",
+          color: "#fff",
+          borderRadius: 12,
+          padding: "14px 18px",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.25)",
+          zIndex: 9999,
+          minWidth: 240,
+          animation: "slideIn 0.3s ease",
+        }}>
+          <div style={{ fontSize: 11, color: "#C8A96E", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>
+            Nuevo turno
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 2 }}>{toast.cliente}</div>
+          <div style={{ fontSize: 13, color: "#aaa" }}>{toast.mensaje}</div>
+        </div>
       )}
     </div>
   );

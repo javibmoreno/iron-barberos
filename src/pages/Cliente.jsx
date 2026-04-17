@@ -276,18 +276,34 @@ export default function Cliente() {
 
       {/* NAVBAR */}
       <div style={{
-        padding: "16px 0 14px",
-        borderBottom: `1px solid ${C.border2}`,
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        background: C.surface, gap: 6,
+        padding: "14px 24px",
+        borderBottom: "1px solid #E0E0E0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#fff",
+        gap: 14,
       }}>
-        <img src="/logo.png" alt="Iron Barberos" style={{ height: 40, objectFit: "contain" }} />
-        <div style={{
-          fontSize: "0.65rem", letterSpacing: "0.35em", color: "#111111",
-          fontFamily: "'Georgia', 'Times New Roman', serif", fontWeight: "bold",
-          textTransform: "uppercase",
-        }}>
-          IRON BARBEROS
+        <img
+          src="/logo.png"
+          alt="Iron Barberos"
+          style={{
+            width: 56, height: 56,
+            borderRadius: "50%",
+            border: "1.5px solid #E0E0E0",
+            objectFit: "contain",
+            mixBlendMode: "multiply",
+            background: "#fff",
+            flexShrink: 0,
+          }}
+        />
+        <div>
+          <div style={{ fontSize: "13px", letterSpacing: "0.35em", color: "#111", fontFamily: "'Georgia','Times New Roman',serif", fontWeight: 500, textTransform: "uppercase", marginBottom: 2 }}>
+            IRON BARBEROS
+          </div>
+          <div style={{ fontSize: "11px", color: "#999", letterSpacing: "0.05em" }}>
+            Barbería & Estilo
+          </div>
         </div>
       </div>
 

@@ -125,13 +125,35 @@ function ConfigPanel({ negocio: initialNegocio }) {
 
       {/* NAVBAR */}
       <div style={{
-        height: 52, borderBottom: `1px solid ${C.border2}`,
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 24px", background: C.surface, position: "sticky", top: 0, zIndex: 100,
+        padding: "14px 24px",
+        borderBottom: "1px solid #E0E0E0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#fff",
+        gap: 14,
+        position: "sticky", top: 0, zIndex: 100,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <img src="/logo.png" alt="Iron Barberos" style={{ height: 28, objectFit: "contain" }} />
-          <span style={{ fontSize: "0.6rem", letterSpacing: "0.2em", color: C.textDim, textTransform: "uppercase" }}>Iron Barberos — Configuración</span>
+        <img
+          src="/logo.png"
+          alt="Iron Barberos"
+          style={{
+            width: 56, height: 56,
+            borderRadius: "50%",
+            border: "1.5px solid #E0E0E0",
+            objectFit: "contain",
+            mixBlendMode: "multiply",
+            background: "#fff",
+            flexShrink: 0,
+          }}
+        />
+        <div>
+          <div style={{ fontSize: "13px", letterSpacing: "0.35em", color: "#111", fontFamily: "'Georgia','Times New Roman',serif", fontWeight: 500, textTransform: "uppercase", marginBottom: 2 }}>
+            IRON BARBEROS
+          </div>
+          <div style={{ fontSize: "11px", color: "#999", letterSpacing: "0.05em" }}>
+            Configuración
+          </div>
         </div>
       </div>
 
