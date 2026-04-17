@@ -288,7 +288,7 @@ export default function Cliente() {
           src="/logo.png"
           alt="Iron Barberos"
           style={{
-            width: 56, height: 56,
+            width: 80, height: 80,
             borderRadius: "50%",
             border: "1.5px solid #E0E0E0",
             objectFit: "contain",
