@@ -63,6 +63,14 @@ function calcEndTime(startSlot, totalSlots, slotMinutos) {
   return `${String(Math.floor(endMin / 60)).padStart(2, "0")}:${String(endMin % 60).padStart(2, "0")}`;
 }
 
+function getTotalSlots(numServicios) {
+  return numServicios === 1 ? 1 : 2;
+}
+
+function getTotalMinutos(numServicios) {
+  return numServicios === 1 ? 30 : 60;
+}
+
 function isSlotOccupied(slot, barbero, fecha, bookings, blocked, allSlots) {
   const idx = allSlots.indexOf(slot);
   const bookedHere = bookings.some(b => {
@@ -77,7 +85,7 @@ function isSlotOccupied(slot, barbero, fecha, bookings, blocked, allSlots) {
 
 // services = array of service objects; checks totalSlots consecutive free slots
 function isSlotAvailableForService(slot, barbero, fecha, services, bookings, blocked, allSlots) {
-  const totalSlots = services.reduce((a, s) => a + s.slots, 0);
+  const totalSlots = getTotalSlots(services.length);
   const startIdx = allSlots.indexOf(slot);
   if (startIdx < 0 || startIdx + totalSlots > allSlots.length) return false;
   for (let i = 0; i < totalSlots; i++) {
@@ -253,7 +261,7 @@ export default function Cliente() {
   const allSlots = generateSlots(negocio.horario);
   const weekDates = getWeekDates(negocio.diasSemana);
   const servicesSubtitle = selectedServices.map(s => s.nombre).join(" + ");
-  const totalSlots = selectedServices.reduce((a, s) => a + s.slots, 0);
+  const totalSlots = getTotalSlots(selectedServices.length);
   const totalPrecio = selectedServices.reduce((a, s) => a + s.precio, 0);
 
   return (
@@ -389,18 +397,24 @@ export default function Cliente() {
             {/* Barra de resumen + botón Continuar */}
             {selectedServices.length > 0 && (
               <div className="fade" style={{ marginTop: 20 }}>
-                <div style={{
-                  background: "#FFFBF4", border: "1px solid #E8D5A3",
-                  borderRadius: 10, padding: "12px 18px",
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  marginBottom: 12,
-                }}>
-                  <span style={{ fontSize: "0.8rem", color: "#555555" }}>
-                    {selectedServices.length} servicio{selectedServices.length > 1 ? "s" : ""} seleccionado{selectedServices.length > 1 ? "s" : ""}
-                  </span>
-                  <span style={{ fontFamily: mono, fontSize: "0.9rem", color: "#111111", fontWeight: "bold" }}>
-                    {formatPrice(totalPrecio)}
-                  </span>
+                <div style={{ background: "#FFFBF4", border: "1px solid #E8D5A3", borderRadius: 10, padding: "12px 16px", marginBottom: 16 }}>
+                  {selectedServices.map(s => (
+                    <div key={s.id} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid #F0E8D8" }}>
+                      <span style={{ fontSize: "13px", color: "#555" }}>{s.nombre}</span>
+                      <span style={{ fontSize: "13px", color: "#111", fontFamily: mono }}>{formatPrice(s.precio)}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", paddingTop: 8, marginTop: 2 }}>
+                    <span style={{ fontSize: "13px", color: "#111", fontWeight: 500 }}>Total</span>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: "15px", color: "#C8A96E", fontFamily: mono, fontWeight: 500 }}>
+                        {formatPrice(selectedServices.reduce((a, s) => a + s.precio, 0))}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#888", marginTop: 2 }}>
+                        Tiempo aprox. {getTotalMinutos(selectedServices.length)} min.
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <button
                   className="primary-btn"
